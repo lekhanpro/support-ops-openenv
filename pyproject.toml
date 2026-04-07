@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-support-ops-env"
+version = "0.1.0"
+description = "Customer support operations environment for OpenEnv"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.40.0",
+    "openenv-core[core]>=0.2.2",
+    "pydantic>=2.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0",
+]
+
+[project.scripts]
+server = "support_ops_env.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["support_ops_env", "support_ops_env.server"]
+package-dir = { "support_ops_env" = ".", "support_ops_env.server" = "server" }

@@ -1,0 +1,4 @@
+# Placeholder lock file for OpenEnv validation.
+# The Dockerfile installs from pyproject.toml with pip, so this file is not
+# consumed at runtime inside the container.
+

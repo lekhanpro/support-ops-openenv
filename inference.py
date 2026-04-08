@@ -15,10 +15,9 @@ from client import SupportOpsEnv
 from models import SupportOpsAction, SupportOpsObservation
 
 # The hackathon validator requires LLM calls to use these injected variables.
-# Local runs should set the same variables rather than alternate key names.
 API_BASE_URL = os.environ["API_BASE_URL"]
 API_KEY = os.environ["API_KEY"]
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+MODEL_NAME = os.environ["MODEL_NAME"]
 IMAGE_NAME = os.getenv("IMAGE_NAME", "support-ops-env:latest")
 MAX_TOKENS = 220
 TASKS = [
@@ -251,12 +250,13 @@ def _attach_message(
         return action.model_copy(update={"message": fallback})
 
 
-def _proxy_probe(client: OpenAI, label: str) -> None:
-    """Force at least one real LLM request through the configured OpenAI client."""
+def _proxy_probe(client: OpenAI, observation: SupportOpsObservation) -> None:
+    """Force one real task-scoped LLM request through the configured OpenAI client."""
     prompt = (
-        "Reply with exactly one short line.\n"
-        f"Label: {label}\n"
-        "Purpose: verify configured proxy-backed OpenAI access."
+        "Reply with exactly one short line summarizing this support task.\n"
+        f"Task ID: {observation.task.task_id}\n"
+        f"Title: {observation.task.title}\n"
+        f"Objective: {observation.task.objective}"
     )
     completion = client.chat.completions.create(
         model=MODEL_NAME,
@@ -285,6 +285,7 @@ async def run_task(task_id: str, client: OpenAI) -> float:
     try:
         result = await env.reset(task_id=task_id)
         observation = result.observation
+        _proxy_probe(client, observation)
 
         max_steps = observation.task.max_steps
         for step in range(1, max_steps + 1):
@@ -338,7 +339,6 @@ async def run_task(task_id: str, client: OpenAI) -> float:
 async def main() -> None:
     ensure_image_exists(IMAGE_NAME)
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-    _proxy_probe(client, "support-ops-openenv-startup")
     requested_task = os.getenv("TASK_ID")
     task_ids = [requested_task] if requested_task else TASKS
     for task_id in task_ids:

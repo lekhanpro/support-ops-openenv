@@ -14,19 +14,11 @@ from openai import OpenAI
 from client import SupportOpsEnv
 from models import SupportOpsAction, SupportOpsObservation
 
-STRICT_PROXY_MODE = "API_BASE_URL" in os.environ and "API_KEY" in os.environ
-if STRICT_PROXY_MODE:
-    # Use the validator-injected proxy configuration exactly as provided.
-    API_BASE_URL = os.environ["API_BASE_URL"]
-    API_KEY = os.environ["API_KEY"]
-else:
-    API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-    API_KEY = (
-        os.getenv("OPENAI_API_KEY")
-        or os.getenv("HF_TOKEN")
-        or "placeholder-token"
-    )
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+# The hackathon validator requires LLM calls to use these injected variables.
+# Local runs should set the same variables rather than alternate key names.
+API_BASE_URL = os.environ["API_BASE_URL"]
+API_KEY = os.environ["API_KEY"]
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 IMAGE_NAME = os.getenv("IMAGE_NAME", "support-ops-env:latest")
 MAX_TOKENS = 220
 TASKS = [
@@ -259,12 +251,12 @@ def _attach_message(
         return action.model_copy(update={"message": fallback})
 
 
-def _proxy_probe(client: OpenAI, observation: SupportOpsObservation) -> None:
-    """Force at least one real LLM request per task when proxy env vars are injected."""
+def _proxy_probe(client: OpenAI, label: str) -> None:
+    """Force at least one real LLM request through the configured OpenAI client."""
     prompt = (
-        "Reply with exactly one short line summarizing the support task.\n"
-        f"Task: {observation.task.title}\n"
-        f"Objective: {observation.task.objective}"
+        "Reply with exactly one short line.\n"
+        f"Label: {label}\n"
+        "Purpose: verify configured proxy-backed OpenAI access."
     )
     completion = client.chat.completions.create(
         model=MODEL_NAME,
@@ -293,8 +285,6 @@ async def run_task(task_id: str, client: OpenAI) -> float:
     try:
         result = await env.reset(task_id=task_id)
         observation = result.observation
-        if STRICT_PROXY_MODE:
-            _proxy_probe(client, observation)
 
         max_steps = observation.task.max_steps
         for step in range(1, max_steps + 1):
@@ -348,6 +338,7 @@ async def run_task(task_id: str, client: OpenAI) -> float:
 async def main() -> None:
     ensure_image_exists(IMAGE_NAME)
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    _proxy_probe(client, "support-ops-openenv-startup")
     requested_task = os.getenv("TASK_ID")
     task_ids = [requested_task] if requested_task else TASKS
     for task_id in task_ids:

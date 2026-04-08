@@ -148,12 +148,12 @@ docker run -p 8000:8000 support-ops-env:latest
 The required baseline script is [inference.py](/D:/New%20folder%20(3)/inference.py). It:
 
 - uses the OpenAI client for LLM calls
-- reads `API_BASE_URL`, `MODEL_NAME`, and the validator-injected `API_KEY`
-- supports `OPENAI_API_KEY` and `HF_TOKEN` as local-development fallbacks
-- makes a guaranteed proxy-backed LLM request per task when `API_BASE_URL` and `API_KEY` are injected
+- reads `API_BASE_URL`, `API_KEY`, and `MODEL_NAME`
+- uses the injected `API_BASE_URL` and `API_KEY` directly for all LLM calls
+- makes a guaranteed OpenAI client request before task execution starts
 - emits structured `[START]`, `[STEP]`, and `[END]` stdout logs
 - runs all three tasks by default
-- falls back to deterministic template replies if an API call is unavailable
+- uses deterministic action selection, with the LLM limited to customer-facing reply drafting
 
 Run it with:
 
@@ -199,7 +199,7 @@ Required environment variables for the Space settings:
 - `API_BASE_URL`
 - `MODEL_NAME`
 - `HF_TOKEN`
-- `OPENAI_API_KEY` or `API_KEY`
+- `OPENAI_API_KEY`
 
 ## Submission assets
 

@@ -15,7 +15,14 @@ from client import SupportOpsEnv
 from models import SupportOpsAction, SupportOpsObservation
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN") or "placeholder-token"
+# The hackathon validator injects API_BASE_URL and API_KEY for LiteLLM proxying.
+# Prefer those exact variables first, then fall back to local-development options.
+API_KEY = (
+    os.getenv("API_KEY")
+    or os.getenv("OPENAI_API_KEY")
+    or os.getenv("HF_TOKEN")
+    or "placeholder-token"
+)
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 IMAGE_NAME = os.getenv("IMAGE_NAME", "support-ops-env:latest")
 MAX_TOKENS = 220

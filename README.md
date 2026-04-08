@@ -148,7 +148,8 @@ docker run -p 8000:8000 support-ops-env:latest
 The required baseline script is [inference.py](/D:/New%20folder%20(3)/inference.py). It:
 
 - uses the OpenAI client for LLM calls
-- reads `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`, and `OPENAI_API_KEY`
+- reads `API_BASE_URL`, `MODEL_NAME`, and the validator-injected `API_KEY`
+- supports `OPENAI_API_KEY` and `HF_TOKEN` as local-development fallbacks
 - emits structured `[START]`, `[STEP]`, and `[END]` stdout logs
 - runs all three tasks by default
 - falls back to deterministic template replies if an API call is unavailable
@@ -158,7 +159,7 @@ Run it with:
 ```bash
 set API_BASE_URL=https://api.openai.com/v1
 set MODEL_NAME=gpt-4o-mini
-set OPENAI_API_KEY=your_key_here
+set API_KEY=your_key_here
 python inference.py
 ```
 
@@ -197,6 +198,7 @@ Required environment variables for the Space settings:
 - `API_BASE_URL`
 - `MODEL_NAME`
 - `HF_TOKEN`
+- `OPENAI_API_KEY` or `API_KEY`
 
 ## Submission assets
 
@@ -209,4 +211,3 @@ Required environment variables for the Space settings:
 - [graders.py](/D:/New%20folder%20(3)/graders.py)
 - [Dockerfile](/D:/New%20folder%20(3)/Dockerfile)
 - [inference.py](/D:/New%20folder%20(3)/inference.py)
-

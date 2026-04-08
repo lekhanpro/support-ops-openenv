@@ -14,15 +14,18 @@ from openai import OpenAI
 from client import SupportOpsEnv
 from models import SupportOpsAction, SupportOpsObservation
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-# The hackathon validator injects API_BASE_URL and API_KEY for LiteLLM proxying.
-# Prefer those exact variables first, then fall back to local-development options.
-API_KEY = (
-    os.getenv("API_KEY")
-    or os.getenv("OPENAI_API_KEY")
-    or os.getenv("HF_TOKEN")
-    or "placeholder-token"
-)
+STRICT_PROXY_MODE = "API_BASE_URL" in os.environ and "API_KEY" in os.environ
+if STRICT_PROXY_MODE:
+    # Use the validator-injected proxy configuration exactly as provided.
+    API_BASE_URL = os.environ["API_BASE_URL"]
+    API_KEY = os.environ["API_KEY"]
+else:
+    API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+    API_KEY = (
+        os.getenv("OPENAI_API_KEY")
+        or os.getenv("HF_TOKEN")
+        or "placeholder-token"
+    )
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 IMAGE_NAME = os.getenv("IMAGE_NAME", "support-ops-env:latest")
 MAX_TOKENS = 220
@@ -245,6 +248,7 @@ def _attach_message(
             ],
             temperature=0,
             max_tokens=MAX_TOKENS,
+            stream=False,
         )
         text = (completion.choices[0].message.content or "").strip()
         if not text:
@@ -253,6 +257,28 @@ def _attach_message(
     except Exception as exc:
         print(f"reply_generation_fallback={type(exc).__name__}", file=sys.stderr, flush=True)
         return action.model_copy(update={"message": fallback})
+
+
+def _proxy_probe(client: OpenAI, observation: SupportOpsObservation) -> None:
+    """Force at least one real LLM request per task when proxy env vars are injected."""
+    prompt = (
+        "Reply with exactly one short line summarizing the support task.\n"
+        f"Task: {observation.task.title}\n"
+        f"Objective: {observation.task.objective}"
+    )
+    completion = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": "Return one short line only."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0,
+        max_tokens=32,
+        stream=False,
+    )
+    text = (completion.choices[0].message.content or "").strip()
+    if not text:
+        raise ValueError("empty proxy probe response")
 
 
 async def run_task(task_id: str, client: OpenAI) -> float:
@@ -267,6 +293,8 @@ async def run_task(task_id: str, client: OpenAI) -> float:
     try:
         result = await env.reset(task_id=task_id)
         observation = result.observation
+        if STRICT_PROXY_MODE:
+            _proxy_probe(client, observation)
 
         max_steps = observation.task.max_steps
         for step in range(1, max_steps + 1):

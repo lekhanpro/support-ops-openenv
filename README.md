@@ -150,6 +150,7 @@ The required baseline script is [inference.py](/D:/New%20folder%20(3)/inference.
 - uses the OpenAI client for LLM calls
 - reads `API_BASE_URL`, `MODEL_NAME`, and the validator-injected `API_KEY`
 - supports `OPENAI_API_KEY` and `HF_TOKEN` as local-development fallbacks
+- makes a guaranteed proxy-backed LLM request per task when `API_BASE_URL` and `API_KEY` are injected
 - emits structured `[START]`, `[STEP]`, and `[END]` stdout logs
 - runs all three tasks by default
 - falls back to deterministic template replies if an API call is unavailable
